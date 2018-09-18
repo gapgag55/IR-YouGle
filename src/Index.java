@@ -307,18 +307,14 @@ public class Index {
 				}
 			}
 
-			if (indexB >= sizeB) {
-				while (indexA < sizeA) {
-					combinePosting.add(APosting.get(indexA));
-					++indexA;
-				}
+			while (indexA < sizeA) {
+				combinePosting.add(APosting.get(indexA));
+				++indexA;
 			}
 
-			if (indexA >= sizeA) {
-				while (indexB < sizeB) {
-					combinePosting.add(BPosting.get(indexB));
-					++indexB;
-				}
+			while (indexB < sizeB) {
+				combinePosting.add(BPosting.get(indexB));
+				++indexB;
 			}
 
 			// Print Combine Posting
