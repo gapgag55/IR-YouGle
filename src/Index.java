@@ -323,7 +323,8 @@ public class Index {
 
 			// Print Combine Posting
 			// for (PostingList posting : combinePosting) {
-			// 	System.out.println("termId: " + posting.getTermId() + "\tDocs: " + posting.getList());
+			// System.out.println("termId: " + posting.getTermId() + "\tDocs: " +
+			// posting.getList());
 			// }
 			// System.out.println("---------- END COMBINDED POSTING ----------");
 
@@ -371,13 +372,12 @@ public class Index {
 	// Added by [Kopkap]
 	// Delete recursively
 	public static void deleteDir(File file) {
-    for (File subFile : file.listFiles()) {
+		for (File subFile : file.listFiles()) {
 			if (subFile.isDirectory()) {
 				deleteDir(subFile);
 			}
-
 			subFile.delete();
-    }
+		}
 	}
 
 	public static void main(String[] args) throws IOException {
