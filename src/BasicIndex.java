@@ -58,12 +58,12 @@ public class BasicIndex implements BaseIndex {
 		int termId = p.getTermId();
 		List<Integer> postings = p.getList();
 		int docFreq = postings.size();
-		int sizePosting = (2 * 4) + (docFreq * 4);
+		int postingSize = (2 * 4) + (docFreq * 4);
 
 		try {
 			// 2 * 4 = 2 variables (termId, docFreq) will allocate each for 4 bytes, thus = 8 bytes
 			// docFreq * 4 = each for 4 bytes allocated
-			ByteBuffer bf = ByteBuffer.allocate(sizePosting);
+			ByteBuffer bf = ByteBuffer.allocate(postingSize);
 			bf.putInt(termId);
 			bf.putInt(docFreq);
 
@@ -78,4 +78,3 @@ public class BasicIndex implements BaseIndex {
 		}
 	}
 }
-
