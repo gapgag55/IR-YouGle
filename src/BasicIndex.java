@@ -1,6 +1,6 @@
-import java.nio.channels.FileChannel;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -16,9 +16,10 @@ public class BasicIndex implements BaseIndex {
 			if (fc.position() < fc.size()) {
 				// Get 2 Buffers first (termId, docFreq) from the blockFile
 				// Each buffer has 4 bytes (Integer Size = 4 bytes) x 2 ea
-				ByteBuffer Buffers = ByteBuffer.allocate(2 * 4);
+				int termAndDocSize = 2 * 4;
+				ByteBuffer Buffers = ByteBuffer.allocate(termAndDocSize);
 
-				// Get data channel to Buffers
+				// Get data channel to Buffers of each posting
 				fc.read(Buffers);
 
 				// Get termId at the byte position
@@ -57,11 +58,12 @@ public class BasicIndex implements BaseIndex {
 		int termId = p.getTermId();
 		List<Integer> postings = p.getList();
 		int docFreq = postings.size();
+		int sizePosting = (2 * 4) + (docFreq * 4);
 
 		try {
 			// 2 * 4 = 2 variables (termId, docFreq) will allocate each for 4 bytes, thus = 8 bytes
 			// docFreq * 4 = each for 4 bytes allocated
-			ByteBuffer bf = ByteBuffer.allocate((2 * 4) + (docFreq * 4));
+			ByteBuffer bf = ByteBuffer.allocate(sizePosting);
 			bf.putInt(termId);
 			bf.putInt(docFreq);
 
