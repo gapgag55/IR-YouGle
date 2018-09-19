@@ -16,8 +16,8 @@ public class BasicIndex implements BaseIndex {
 			if (fc.position() < fc.size()) {
 				// Get 2 Buffers first (termId, docFreq) from the blockFile
 				// Each buffer has 4 bytes (Integer Size = 4 bytes) x 2 ea
-				int termAndDocSize = 2 * 4;
-				ByteBuffer Buffers = ByteBuffer.allocate(termAndDocSize);
+				int termAndFreqSize = 2 * 4;
+				ByteBuffer Buffers = ByteBuffer.allocate(termAndFreqSize);
 
 				// Get data channel to Buffers of each posting
 				fc.read(Buffers);
@@ -30,7 +30,8 @@ public class BasicIndex implements BaseIndex {
 
 				// Get docIds by docFreq * 4 bytes
 				ArrayList<Integer> postings = new ArrayList<Integer>(docFreq);
-				ByteBuffer docs = ByteBuffer.allocate(docFreq * 4);
+				int docsSize = docFreq * 4;
+				ByteBuffer docs = ByteBuffer.allocate(docsSize);
 
 				// Now, buffer only has the docIds
 				// fc.read() above remove termId and docFreq already.
