@@ -218,6 +218,7 @@ public static List<Integer> intersect(List<Integer> list1, List<Integer> list2) 
 				if(count2==listsize2)break;
 				temp2 = list2.remove(0);
 				
+				
 			}
 			if(temp1==temp2) {
 				intersection.add(temp1);
