@@ -12,42 +12,32 @@ public class BasicIndex implements BaseIndex {
 		 * TODO: Your code here
 		 *       Read and return the postings list from the given file.
 		 */
+		PostingList rePostingList = null;
+		int intSize = 4;
+		ByteBuffer buf = ByteBuffer.allocate(intSize*2);
 		try {
-			if (fc.position() < fc.size()) {
-				// Get 2 Buffers first (termId, docFreq) from the blockFile
-				// Each buffer has 4 bytes (Integer Size = 4 bytes) x 2 ea
-				int termAndFreqSize = 2 * 4;
-				ByteBuffer Buffers = ByteBuffer.allocate(termAndFreqSize);
-
-				// Get data channel to Buffers of each posting
-				fc.read(Buffers);
-
-				// Get termId at the byte position
-				int termId  = Buffers.getInt(0);
-
-				// Get docFreq at the byte position at 2
-				int docFreq = Buffers.getInt(4);
-
-				// Get docIds by docFreq * 4 bytes
-				ArrayList<Integer> postings = new ArrayList<Integer>(docFreq);
-				int docsSize = docFreq * 4;
-				ByteBuffer docs = ByteBuffer.allocate(docsSize);
-
-				// Now, buffer only has the docIds
-				// fc.read() above remove termId and docFreq already.
-				fc.read(docs);
-
-				// Read all docIds
-				for(int i = 0; i < docFreq; i++)
-					postings.add(docs.getInt(i * 4));
-
-				return new PostingList(termId, postings);
+			if(fc.read(buf)!= -1){
+				buf.flip();
+				List<Integer> postingLists = new ArrayList<Integer>();
+				int termID = buf.getInt();
+				int size = buf.getInt();
+				
+				buf = ByteBuffer.allocate(intSize*size);
+				fc.read(buf);
+				buf.flip();
+				for(int i = 0;i<size;i++) {
+					postingLists.add(buf.getInt());
+					
+				}
+				rePostingList = new PostingList(termID,postingLists);
 			}
-		} catch(IOException e) {
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-
-		return null;
+		
+		
+		return rePostingList;
 	}
 
 	@Override
@@ -56,26 +46,24 @@ public class BasicIndex implements BaseIndex {
 		 * TODO: Your code here
 		 *       Write the given postings list to the given file.
 		 */
-		int termId = p.getTermId();
-		List<Integer> postings = p.getList();
-		int docFreq = postings.size();
-		int postingSize = (2 * 4) + (docFreq * 4);
-
+		int intSize = 4;
+		List<Integer> lists = p.getList();
+		int lengthOfBuffer = 2+lists.size();
+		
+		ByteBuffer buf = ByteBuffer.allocate(intSize*lengthOfBuffer);
+		buf.putInt(p.getTermId());
+		buf.putInt(lists.size());
+		for(Integer doc : lists) {
+			buf.putInt(doc);
+		}
+		
+		buf.flip();
 		try {
-			// 2 * 4 = 2 variables (termId, docFreq) will allocate each for 4 bytes, thus = 8 bytes
-			// docFreq * 4 = each for 4 bytes allocated
-			ByteBuffer bf = ByteBuffer.allocate(postingSize);
-			bf.putInt(termId);
-			bf.putInt(docFreq);
-
-			for(int i = 0; i < docFreq; i++)
-				bf.putInt(postings.get(i));
-
-			bf.flip();
-			fc.write(bf);
-
-		} catch(IOException e) {
+			fc.write(buf);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		
 	}
 }

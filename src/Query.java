@@ -1,4 +1,5 @@
 
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -6,66 +7,81 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.RandomAccessFile;
 import java.nio.channels.FileChannel;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
-import java.util.ArrayList;
-import java.nio.ByteBuffer;
+import java.util.TreeSet;
 
 public class Query {
 
 	// Term id -> position in index file
-	private Map<Integer, Long> posDict = new TreeMap<Integer, Long>();
+	private  Map<Integer, Long> posDict = new TreeMap<Integer, Long>();
 	// Term id -> document frequency
-	private Map<Integer, Integer> freqDict = new TreeMap<Integer, Integer>();
+	private  Map<Integer, Integer> freqDict = new TreeMap<Integer, Integer>();
 	// Doc id -> doc name dictionary
-	private Map<Integer, String> docDict = new TreeMap<Integer, String>();
+	private  Map<Integer, String> docDict = new TreeMap<Integer, String>();
 	// Term -> term id dictionary
-	private Map<String, Integer> termDict = new TreeMap<String, Integer>();
+	private  Map<String, Integer> termDict = new TreeMap<String, Integer>();
 	// Index
-	private BaseIndex index = null;
+	private  BaseIndex index = null;
+	
 
-	// indicate whether the query service is running or not
+	//indicate whether the query service is running or not
 	private boolean running = false;
 	private RandomAccessFile indexFile = null;
-
-	/*
-	 * Read a posting list with a given termID from the file You should seek to the
-	 * file position of this specific posting list and read it back.
-	 */
-	private PostingList readPosting(FileChannel fc, int termId) throws IOException {
+	
+	/* 
+	 * Read a posting list with a given termID from the file 
+	 * You should seek to the file position of this specific
+	 * posting list and read it back.
+	 * */
+	private  PostingList readPosting(FileChannel fc, int termId)
+			throws IOException {
 		/*
 		 * TODO: Your code here
 		 */
-		long pos = posDict.get(termId);
-		PostingList ok = index.readPosting(fc.position(pos));
-		// System.out.println(ok.getTermId() + " : " + ok.getList());
-		return ok;
+		
+		long position = posDict.get(termId);
+		fc.position(position);
+		
+		PostingList postingList = index.readPosting(fc);
+		
+		return postingList;
 	}
-
-	public void runQueryService(String indexMode, String indexDirname) throws IOException {
-		// Get the index reader
+	
+	
+	public void runQueryService(String indexMode, String indexDirname) throws IOException
+	{
+		//Get the index reader
 		try {
-			Class<?> indexClass = Class.forName(indexMode + "Index");
+			Class<?> indexClass = Class.forName(indexMode+"Index");
 			index = (BaseIndex) indexClass.newInstance();
 		} catch (Exception e) {
-			System.err.println("Index method must be \"Basic\", \"VB\", or \"Gamma\"");
+			System.err
+					.println("Index method must be \"Basic\", \"VB\", or \"Gamma\"");
 			throw new RuntimeException(e);
 		}
-
-		// Get Index file
+		
+		//Get Index file
 		File inputdir = new File(indexDirname);
 		if (!inputdir.exists() || !inputdir.isDirectory()) {
 			System.err.println("Invalid index directory: " + indexDirname);
 			return;
 		}
-
+		
 		/* Index file */
-		indexFile = new RandomAccessFile(new File(indexDirname, "corpus.index"), "r");
+		indexFile = new RandomAccessFile(new File(indexDirname,
+				"corpus.index"), "r");
 
 		String line = null;
 		/* Term dictionary */
-		BufferedReader termReader = new BufferedReader(new FileReader(new File(indexDirname, "term.dict")));
+		BufferedReader termReader = new BufferedReader(new FileReader(new File(
+				indexDirname, "term.dict")));
 		while ((line = termReader.readLine()) != null) {
 			String[] tokens = line.split("\t");
 			termDict.put(tokens[0], Integer.parseInt(tokens[1]));
@@ -73,7 +89,8 @@ public class Query {
 		termReader.close();
 
 		/* Doc dictionary */
-		BufferedReader docReader = new BufferedReader(new FileReader(new File(indexDirname, "doc.dict")));
+		BufferedReader docReader = new BufferedReader(new FileReader(new File(
+				indexDirname, "doc.dict")));
 		while ((line = docReader.readLine()) != null) {
 			String[] tokens = line.split("\t");
 			docDict.put(Integer.parseInt(tokens[1]), tokens[0]);
@@ -81,96 +98,139 @@ public class Query {
 		docReader.close();
 
 		/* Posting dictionary */
-		BufferedReader postReader = new BufferedReader(new FileReader(new File(indexDirname, "posting.dict")));
+		BufferedReader postReader = new BufferedReader(new FileReader(new File(
+				indexDirname, "posting.dict")));
 		while ((line = postReader.readLine()) != null) {
 			String[] tokens = line.split("\t");
 			posDict.put(Integer.parseInt(tokens[0]), Long.parseLong(tokens[1]));
-			freqDict.put(Integer.parseInt(tokens[0]), Integer.parseInt(tokens[2]));
+			freqDict.put(Integer.parseInt(tokens[0]),
+					Integer.parseInt(tokens[2]));
 		}
 		postReader.close();
-
+		
 		this.running = true;
 	}
-
-	public List<Integer> retrieve(String query) throws IOException {
-		if (!running) {
+    
+	public List<Integer> retrieve(String query) throws IOException
+	{	if(!running) 
+		{
 			System.err.println("Error: Query service must be initiated");
 		}
-
+		
 		/*
-		 * TODO: Your code here Perform query processing with the inverted index. return
-		 * the list of IDs of the documents that match the query
-		 *
+		 * TODO: Your code here
+		 *       Perform query processing with the inverted index.
+		 *       return the list of IDs of the documents that match the query
+		 *      
 		 */
-		String[] termQuries = query.split(" ");
-		ArrayList<PostingList> postingLists = new ArrayList<PostingList>();
-		ArrayList<Integer> docIds = new ArrayList<Integer>();
+		String[] words = query.split(" ");
+		
+		
 		FileChannel fc = indexFile.getChannel();
-		PostingList postingTemp;
-
-		// Find docIds of each term
-		for (String term : termQuries) {
-			if (termDict.get(term) != null) {
-				// System.out.println(term + " " + termDict.get(term));
-
-				postingTemp = readPosting(fc, termDict.get(term));
-				// System.out.println(postingTemp.getTermId() + " : " + postingTemp.getList());
-				postingLists.add(postingTemp);
-			}
-
-			if (termDict.get(term) == null) {
-				System.out.println(term + " is not found");
+		
+		List<PostingList> qResults = new ArrayList<PostingList>();
+		
+		for(String word:words) {
+			if(termDict.get(word)!=null) {
+				qResults.add(readPosting(fc,termDict.get(word)));
 			}
 		}
-
-		// Intersection of docIds
-		if (postingLists.size() == 1) {
-			// No repeated docId exactly.
-			return postingLists.get(0).getList();
-		}
-
-		if (postingLists.size() > 1) {
-			List<Integer> posting;
-
-			for (int i = 0; i < postingLists.size(); i++) {
-				posting = postingLists.get(i).getList();
-
-				for (int j = 0; j < posting.size(); j++) {
-					if (!docIds.contains(posting.get(j)))
-						docIds.add(posting.get(j));
+		
+		if(!qResults.isEmpty()) {
+			if (qResults.size() == 1) {
+				return qResults.get(0).getList();
+			}else if(qResults.size()>1){
+				List<Integer> reDoc = qResults.remove(0).getList();
+				int count = 0;
+				int size = qResults.size();
+				while(true) {
+					
+					count++;
+					if(count==size)break;
+					reDoc = intersect(reDoc,qResults.remove(0).getList());
 				}
+				return reDoc;
+				
 			}
-
-			return docIds;
+			
 		}
-
+		
 		return null;
+		
+		
+	
+		
+		
+		
 	}
-
-	String outputQueryResult(List<Integer> res) {
-		/*
-		 * TODO:
-		 *
-		 * Take the list of documents ID and prepare the search results, sorted by
-		 * lexicon order.
-		 *
-		 * E.g. 0/fine.txt 0/hello.txt 1/bye.txt 2/fine.txt 2/hello.txt
+	
+    String outputQueryResult(List<Integer> res) {
+        /*
+         * TODO: 
+         * 
+         * Take the list of documents ID and prepare the search results, sorted by lexicon order. 
+         * 
+         * E.g.
+         * 	0/fine.txt
+		 *	0/hello.txt
+		 *	1/bye.txt
+		 *	2/fine.txt
+		 *	2/hello.txt
 		 *
 		 * If there no matched document, output:
-		 *
+		 * 
 		 * no results found
-		 *
-		 */
-		if (res == null)
-			return "no results found";
-
-		String result = "";
-		for (int i : res) {
-			result += docDict.get(i) + "\n";
-			// System.out.println(docDict.get(i));
-			// System.out.println(result);
+		 * 
+         * */
+    	if(res == null) return "Not Found";
+    	
+    	String s = new String();
+    	for(Integer a: res)
+    	{
+    		s+= a + "\n";
+    	}
+    
+    	return s;
+    }
+	
+public static List<Integer> intersect(List<Integer> list1, List<Integer> list2) {
+		
+		int listsize1 = list1.size();
+		int listsize2 = list2.size();
+		int count1 = 0;
+		int count2 = 0;
+		int temp1 = list1.remove(0);
+		int temp2 = list2.remove(0);
+		
+		
+		List<Integer> intersection = new ArrayList<Integer>();
+		//merging
+		while(true) {	
+			
+			if(temp1<temp2) {
+				count1++;
+				if(count1==listsize1)break;
+				temp1 = list1.remove(0);
+				
+			}
+			if(temp2<temp1) {
+				count2++;
+				if(count2==listsize2)break;
+				temp2 = list2.remove(0);
+				
+			}
+			if(temp1==temp2) {
+				intersection.add(temp1);
+				count1++;
+				count2++;
+				if(count1==listsize1)break;
+				if(count2==listsize2)break;
+				temp1 = list1.remove(0);
+				temp2 = list2.remove(0);
+				
+			}
 		}
-		return result;
+		return intersection;
 	}
 
 	public static void main(String[] args) throws IOException {
@@ -185,16 +245,17 @@ public class Query {
 		try {
 			className = args[0];
 		} catch (Exception e) {
-			System.err.println("Index method must be \"Basic\", \"VB\", or \"Gamma\"");
+			System.err
+					.println("Index method must be \"Basic\", \"VB\", or \"Gamma\"");
 			throw new RuntimeException(e);
 		}
 
 		/* Get index directory */
 		String input = args[1];
-
+		
 		Query queryService = new Query();
 		queryService.runQueryService(className, input);
-
+		
 		/* Processing queries */
 		BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
 
@@ -204,16 +265,17 @@ public class Query {
 			List<Integer> hitDocs = queryService.retrieve(line);
 			queryService.outputQueryResult(hitDocs);
 		}
-
+		
 		br.close();
 	}
-
-	protected void finalize() {
+	
+	protected void finalize()
+	{
 		try {
-			if (indexFile != null)
-				indexFile.close();
+			if(indexFile != null)indexFile.close();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}
 }
+
